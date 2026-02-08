@@ -5,11 +5,13 @@ export class ShoppingList {
   name: string;
   createdAt: string;
   items: Product[];
+  completed: boolean;
 
-  constructor(name: string) {
+  constructor(name: string, date?: string) {
     this.id = crypto.randomUUID();
     this.name = name;
-    this.createdAt = new Date().toISOString();
+    this.createdAt = date || new Date().toISOString();
     this.items = [];
+    this.completed = false;
   }
 }
