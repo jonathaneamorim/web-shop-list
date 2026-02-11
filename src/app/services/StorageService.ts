@@ -18,15 +18,23 @@ export class StorageService {
     const lists = this.getLists();
     if (lists.length === 0) return;
 
-    const headers = ["listId", "listName", "listCreatedAt", "listCompleted", "productName", "productQty"];
+    const headers = ["listId", "listName", "listCreatedAt", "listCompleted", "productName", "productQty", "productCompleted"];
     const rows: string[][] = [];
 
     lists.forEach(list => {
       if (list.items.length === 0) {
-        rows.push([list.id, list.name, list.createdAt, String(list.completed), "", ""]);
+        rows.push([list.id, list.name, list.createdAt, String(list.completed), "", "", ""]);
       } else {
         list.items.forEach(prod => {
-          rows.push([list.id, list.name, list.createdAt, String(list.completed), prod.name, String(prod.quantity)]);
+          rows.push([
+            list.id, 
+            list.name, 
+            list.createdAt, 
+            String(list.completed), 
+            prod.name, 
+            String(prod.quantity), 
+            String(!!prod.completed)
+          ]);
         });
       }
     });
@@ -45,12 +53,12 @@ export class StorageService {
 
   static async importFromCSV(file: File): Promise<ShoppingList[]> {
     const text = await file.text();
-    const lines = text.split("\n").slice(1); // Pula header
+    const lines = text.split("\n").slice(1);
     const listMap = new Map<string, ShoppingList>();
 
     lines.forEach(line => {
       if (!line.trim()) return;
-      const [listId, listName, listCreatedAt, listCompleted, productName, productQty] = line.split(",");
+      const [listId, listName, listCreatedAt, listCompleted, productName, productQty, productCompleted] = line.split(",");
 
       if (!listMap.has(listId)) {
         listMap.set(listId, {
@@ -64,6 +72,7 @@ export class StorageService {
 
       if (productName && productName.trim() !== "") {
         const product = new Product(productName, Number(productQty));
+        product.completed = productCompleted === "true";
         listMap.get(listId)?.items.push(product);
       }
     });
