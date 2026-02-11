@@ -36,7 +36,7 @@ Para compartilhar uma lista com alguém (como um familiar que vai ao mercado), o
 
 1. Clone este repositório:
 ```bash
-git clone [https://github.com/seu-usuario/webshoplist.git](https://github.com/seu-usuario/webshoplist.git)
+git clone https://github.com/jonathaneamorim/web-shop-list.git
 ```
 
 2. Acesse a pasta do projeto:
