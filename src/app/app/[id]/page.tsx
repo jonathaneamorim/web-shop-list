@@ -72,22 +72,26 @@ export default function ListDetails({ params }: { params: Promise<{ id: string }
     setList(updatedList);
   };
 
+  const toggleProductCompletion = (productId: string) => {
+    if (!list) return;
+    const updatedItems = list.items.map(p => 
+      p.id === productId ? { ...p, completed: !p.completed } : p
+    );
+    const updatedList = { ...list, items: updatedItems } as ShoppingList;
+    StorageService.updateList(updatedList);
+    setList(updatedList);
+  };
+
   if (!list) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-12" suppressHydrationWarning>
       <div className="max-w-3xl mx-auto">
-        <header className="flex flex-col gap-6 mb-8 text-left">
+        <header className="mb-8 text-left">
           <Link href="/app" className="inline-flex items-center justify-start gap-2 text-gray-400 font-black text-[10px] uppercase tracking-widest transition-colors hover:text-blue-600">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
             Voltar para Listas
           </Link>
-          <button 
-            onClick={() => { setEditingProductId(null); setProductName(""); setProductQty(1); setIsProductModalOpen(true); }}
-            className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all hover:bg-blue-700"
-          >
-            + Adicionar Produto
-          </button>
         </header>
 
         <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-100 mb-8 transition-all">
@@ -125,21 +129,40 @@ export default function ListDetails({ params }: { params: Promise<{ id: string }
           )}
         </div>
 
+        <div className="mb-8 sticky top-4 z-10">
+          <button 
+            onClick={() => { setEditingProductId(null); setProductName(""); setProductQty(1); setIsProductModalOpen(true); }}
+            className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+            Adicionar Produto
+          </button>
+        </div>
+
         <div className="space-y-4">
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] ml-2 mb-2">Itens na Lista</h3>
           {list.items.length === 0 ? (
-            <div className="text-center py-20 bg-white border-2 border-dashed border-gray-100 rounded-[2.5rem]">
-              <p className="text-gray-300 font-black uppercase tracking-widest text-[10px]">A lista está vazia</p>
+            <div 
+              onClick={() => { setEditingProductId(null); setProductName(""); setProductQty(1); setIsProductModalOpen(true); }}
+              className="text-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[2.5rem] cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group"
+            >
+              <p className="text-gray-400 group-hover:text-blue-600 font-black uppercase tracking-widest text-[10px] transition-colors">A lista está vazia. Clique para adicionar.</p>
             </div>
           ) : (
             list.items.map(product => (
-              <div key={product.id} className="flex items-center justify-between p-5 bg-white border border-gray-100 rounded-3xl shadow-sm hover:border-blue-200 transition-all">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex flex-col items-center justify-center shadow-lg shrink-0">
-                    <span className="text-[9px] font-black uppercase leading-none opacity-60">Qtd</span>
-                    <span className="font-black text-xl leading-none mt-1">{product.quantity}</span>
+              <div key={product.id} className={`flex items-center justify-between p-5 border rounded-3xl shadow-sm transition-all ${product.completed ? 'bg-gray-50 border-gray-50 opacity-70' : 'bg-white border-gray-100 hover:border-blue-200'}`}>
+                <div className="flex items-center gap-4 md:gap-5">
+                  <button 
+                    onClick={() => toggleProductCompletion(product.id)}
+                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border-2 transition-all shrink-0 ${product.completed ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'bg-white border-gray-200 text-transparent hover:border-blue-400'}`}
+                  >
+                    <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                  </button>
+                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex flex-col items-center justify-center shadow-inner shrink-0 ${product.completed ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white shadow-lg'}`}>
+                    <span className="text-[8px] md:text-[9px] font-black uppercase leading-none opacity-60">Qtd</span>
+                    <span className="font-black text-lg md:text-xl leading-none mt-1">{product.quantity}</span>
                   </div>
-                  <span className="font-bold text-gray-800 text-lg uppercase tracking-tighter leading-tight break-all">{product.name}</span>
+                  <span className={`font-bold text-base md:text-lg uppercase tracking-tighter leading-tight break-all ${product.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{product.name}</span>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => { setEditingProductId(product.id); setProductName(product.name); setProductQty(product.quantity); setIsProductModalOpen(true); }} className="p-3 md:p-4 text-gray-300 hover:text-blue-600 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
