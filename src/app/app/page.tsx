@@ -81,26 +81,34 @@ export default function AppMain() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-12" suppressHydrationWarning>
       <header className="max-w-5xl mx-auto mb-10 text-center md:text-left">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-6 md:mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Minhas Listas</h1>
             <p className="text-gray-400 mt-1 font-bold text-[10px] uppercase tracking-[0.2em]">Backup & Organização</p>
           </div>
+          
           <button 
             onClick={handleOpenCreateModal}
-            className="w-full md:w-auto bg-blue-600 text-white px-10 py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all"
+            className="hidden md:block bg-blue-600 text-white px-10 py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all"
           >
             + Criar Lista
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-[2rem] border border-gray-100 shadow-sm">
-          <button onClick={handleExport} className="py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 transition-all">📥 Exportar Backup</button>
+        <div className="grid grid-cols-2 gap-3 bg-white p-3 rounded-[2rem] border border-gray-100 shadow-sm mb-6 md:mb-0">
+          <button onClick={handleExport} className="py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 transition-all">📥 Exportar</button>
           <label className="cursor-pointer">
             <input type="file" ref={fileInputRef} accept=".csv" className="hidden" onChange={handleImport} />
-            <div className="py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-green-50 hover:text-green-600 transition-all text-center">📤 Importar Backup</div>
+            <div className="py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-green-50 hover:text-green-600 transition-all text-center">📤 Importar</div>
           </label>
         </div>
+
+        <button 
+          onClick={handleOpenCreateModal}
+          className="block md:hidden w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all"
+        >
+          + Criar Lista
+        </button>
       </header>
 
       <main className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
