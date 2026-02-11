@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { siteMetadata } from "@/app/shared-metadata";
+import { siteMetadata, siteViewport } from "@/app/shared-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = siteMetadata;
+export const viewport = siteViewport;
 
 export default function RootLayout({
   children,
