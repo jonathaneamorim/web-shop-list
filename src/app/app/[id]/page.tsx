@@ -175,22 +175,45 @@ export default function ListDetails({ params }: { params: Promise<{ id: string }
       </div>
 
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 md:pt-0 md:items-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setIsProductModalOpen(false)} />
-          <div className="relative bg-white w-full max-w-md rounded-t-[3rem] md:rounded-[3rem] shadow-2xl p-10 animate-in slide-in-from-bottom-10 duration-300">
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[3rem] shadow-2xl p-8 animate-in slide-in-from-top-10 duration-300 mt-10 md:mt-0">
             <h2 className="text-center font-black uppercase text-blue-600 mb-8 tracking-[0.2em]">{editingProductId ? "Editar" : "Novo"} Item</h2>
             <div className="space-y-6">
-              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 font-bold outline-none focus:border-blue-500 text-gray-800" value={productName} onChange={e => setProductName(e.target.value)} placeholder="Nome do Produto" autoFocus />
-              <div className="flex items-center bg-gray-100 rounded-2xl p-2 border border-gray-200">
-                <button onClick={() => setProductQty(Math.max(1, productQty - 1))} className="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-blue-600 text-xl active:scale-90 transition-transform">-</button>
-                <div className="flex-1 text-center font-black text-2xl text-gray-800">{productQty}</div>
-                <button onClick={() => setProductQty(productQty + 1)} className="w-12 h-12 flex items-center justify-center bg-blue-600 rounded-xl shadow-md font-black text-white text-xl active:scale-90 transition-transform">+</button>
+              <input 
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 font-bold outline-none focus:border-blue-500 text-gray-800 text-lg placeholder:text-gray-400" 
+                value={productName} 
+                onChange={e => setProductName(e.target.value)} 
+                placeholder="Nome do Produto" 
+                autoFocus 
+              />
+              
+              <div className="flex items-center bg-gray-50 rounded-2xl p-2 border-2 border-gray-100">
+                <button 
+                  onClick={() => setProductQty(Math.max(1, productQty - 1))} 
+                  className="w-14 h-14 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-blue-600 text-2xl active:scale-90 transition-transform hover:bg-blue-50"
+                >
+                  -
+                </button>
+                <div className="flex-1 text-center font-black text-3xl text-gray-800">{productQty}</div>
+                <button 
+                  onClick={() => setProductQty(productQty + 1)} 
+                  className="w-14 h-14 flex items-center justify-center bg-blue-600 rounded-xl shadow-lg shadow-blue-200 font-black text-white text-2xl active:scale-90 transition-transform hover:bg-blue-700"
+                >
+                  +
+                </button>
               </div>
-              <button onClick={handleSaveProduct} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest mt-4 shadow-lg active:scale-95 transition-all">Confirmar</button>
+
+              <div className="flex gap-3 pt-2">
+                 <button onClick={() => setIsProductModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
+                 <button onClick={handleSaveProduct} className="flex-[2] bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700">Confirmar</button>
+              </div>
             </div>
           </div>
         </div>
       )}
     </div>
+
+    
   );
 }

@@ -24,13 +24,23 @@ export default function AppMain() {
   const handleExport = () => StorageService.exportToCSV();
   
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const updatedLists = await StorageService.importFromCSV(file);
-      setLists(updatedLists);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+      const file = e.target.files?.[0];
+      if (file) {
+        try {
+          const updatedLists = await StorageService.importFromCSV(file);
+          setLists(updatedLists);
+          alert("Backup importado com sucesso!");
+        } catch (error) {
+          if (error instanceof Error) {
+            alert(`Erro na importação: ${error.message}`);
+          } else {
+            alert("Ocorreu um erro desconhecido ao importar o arquivo.");
+          }
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      }
+    };
 
   const handleOpenCreateModal = () => {
     setEditingListId(null);
@@ -157,16 +167,27 @@ export default function AppMain() {
       </main>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 md:pt-0 md:items-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100">
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 mt-10 md:mt-0 animate-in slide-in-from-top-10 duration-300">
             <div className="bg-blue-600 p-8 text-white text-center font-black uppercase tracking-widest">{editingListId ? "Editar" : "Nova"} Lista</div>
-            <div className="p-10 space-y-6">
-              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 outline-none font-bold text-gray-800 placeholder:text-gray-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nome da Lista" autoFocus />
-              <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 outline-none font-bold text-gray-800" value={date} onChange={e => setDate(e.target.value)} />
+            <div className="p-8 space-y-6">
+              <input 
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 outline-none font-bold text-gray-800 placeholder:text-gray-500 focus:border-blue-500 transition-colors" 
+                value={name} 
+                onChange={e => setName(e.target.value)} 
+                placeholder="Nome da Lista" 
+                autoFocus 
+              />
+              <input 
+                type="date" 
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 outline-none font-bold text-gray-800 focus:border-blue-500 transition-colors" 
+                value={date} 
+                onChange={e => setDate(e.target.value)} 
+              />
               <div className="flex gap-4 pt-4">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl">Cancelar</button>
-                <button onClick={handleSaveList} className="flex-1 py-5 font-black text-xs uppercase text-white bg-blue-600 rounded-2xl">Confirmar</button>
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
+                <button onClick={handleSaveList} className="flex-1 py-5 font-black text-xs uppercase text-white bg-blue-600 rounded-2xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">Confirmar</button>
               </div>
             </div>
           </div>
