@@ -1,184 +1,221 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { ShoppingList } from "@/app/entities/ShoppingList";
 import { Product } from "@/app/entities/Product";
 import { StorageService } from "@/app/services/StorageService";
-import Link from "next/link";
+import toast from "react-hot-toast";
+import Loading from "./Loading";
 
 export default function ListDetails({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  
   const [list, setList] = useState<ShoppingList | null>(null);
-  const [isEditingList, setIsEditingList] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editDate, setEditDate] = useState("");
-
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
+  
   const [productName, setProductName] = useState("");
   const [productQty, setProductQty] = useState(1);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+
+  const [editListName, setEditListName] = useState("");
+  const [editListDate, setEditListDate] = useState("");
 
   useEffect(() => {
-    const data = StorageService.getListById(id);
-    if (data) {
-      const handler = requestAnimationFrame(() => {
-        setList(data);
-        setEditName(data.name);
-        setEditDate(new Date(data.createdAt).toISOString().split("T")[0]);
-      });
-      return () => cancelAnimationFrame(handler);
-    } else {
-      router.push("/app");
-    }
+    const loadList = () => {
+      const foundList = StorageService.getListById(id);
+      if (!foundList) {
+        toast.error("Lista não encontrada");
+        router.push("/app");
+        return;
+      }
+      setList(foundList);
+    };
+    loadList();
   }, [id, router]);
 
   const handleUpdateListInfo = () => {
-    if (!list || !editName.trim()) return;
-    const updated = { ...list, name: editName, createdAt: new Date(editDate).toISOString() } as ShoppingList;
-    StorageService.updateList(updated);
-    setList(updated);
-    setIsEditingList(false);
+    if (!list || !editListName.trim()) return;
+
+    const updatedList = { ...list, name: editListName, createdAt: new Date(editListDate).toISOString() };
+    StorageService.updateList(updatedList);
+    setList(updatedList);
+    setIsEditListModalOpen(false);
+    toast.success("Informações atualizadas!");
+  };
+
+  const handleOpenProductModal = (product?: Product) => {
+    if (product) {
+      setEditingProductId(product.id);
+      setProductName(product.name);
+      setProductQty(product.quantity);
+    } else {
+      setEditingProductId(null);
+      setProductName("");
+      setProductQty(1);
+    }
+    setIsProductModalOpen(true);
   };
 
   const handleSaveProduct = () => {
-    if (!list || !productName.trim()) return;
-
-    let updatedItems;
-    if (editingProductId) {
-      updatedItems = list.items.map(p => 
-        p.id === editingProductId ? { ...p, name: productName, quantity: productQty } : p
-      );
-    } else {
-      const newProduct = new Product(productName, productQty);
-      updatedItems = [...list.items, newProduct];
+    if (!productName.trim() || !list) {
+      toast.error("Nome do produto é obrigatório");
+      return;
     }
 
-    const updatedList = { ...list, items: updatedItems } as ShoppingList;
+    const updatedList = { ...list };
+
+    if (editingProductId) {
+      updatedList.items = updatedList.items.map(p => 
+        p.id === editingProductId 
+          ? { ...p, name: productName, quantity: productQty } 
+          : p
+      );
+      toast.success("Produto atualizado!");
+    } else {
+      const newProduct = new Product(productName, productQty);
+      updatedList.items.push(newProduct);
+      toast.success("Produto adicionado!");
+    }
+
     StorageService.updateList(updatedList);
     setList(updatedList);
     setIsProductModalOpen(false);
     setProductName("");
     setProductQty(1);
+    setEditingProductId(null);
   };
 
-  const removeProduct = (productId: string) => {
+  const toggleProductCompletion = (product: Product) => {
     if (!list) return;
-    const updatedItems = list.items.filter(p => p.id !== productId);
-    const updatedList = { ...list, items: updatedItems } as ShoppingList;
-    StorageService.updateList(updatedList);
-    setList(updatedList);
-  };
-
-  const toggleProductCompletion = (productId: string) => {
-    if (!list) return;
-    const updatedItems = list.items.map(p => 
-      p.id === productId ? { ...p, completed: !p.completed } : p
+    const updatedList = { ...list };
+    updatedList.items = updatedList.items.map(p => 
+      p.id === product.id ? { ...p, completed: !p.completed } : p
     );
-    const updatedList = { ...list, items: updatedItems } as ShoppingList;
     StorageService.updateList(updatedList);
     setList(updatedList);
   };
 
-  if (!list) return null;
+  const confirmDeleteProduct = () => {
+    if (!list || !productToDelete) return;
+    const updatedList = { ...list };
+    updatedList.items = updatedList.items.filter(p => p.id !== productToDelete.id);
+    StorageService.updateList(updatedList);
+    setList(updatedList);
+    setProductToDelete(null);
+    toast.success("Produto removido.");
+  };
+
+  if (!list) return <Loading />;
+
+  const totalItems = list.items.length;
+  const completedItems = list.items.filter(i => i.completed).length;
+  const progress = totalItems === 0 ? 0 : (completedItems / totalItems) * 100;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-12" suppressHydrationWarning>
-      <div className="max-w-3xl mx-auto">
-        <header className="mb-8 text-left">
-          <Link href="/app" className="inline-flex items-center justify-start gap-2 text-gray-400 font-black text-[10px] uppercase tracking-widest transition-colors hover:text-blue-600">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            Voltar para Listas
-          </Link>
-        </header>
-
-        <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-100 mb-8 transition-all">
-          {isEditingList ? (
-            <div className="flex flex-col gap-5 animate-in fade-in duration-300">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-blue-600 uppercase ml-1 tracking-widest">Nome da Lista</label>
-                <input className="w-full text-lg font-bold bg-gray-50 border-2 border-blue-500 rounded-2xl p-4 outline-none text-gray-800 placeholder:text-gray-500" value={editName} onChange={e => setEditName(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-blue-600 uppercase ml-1 tracking-widest">Data Planejada</label>
-                <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 outline-none font-bold text-gray-800" value={editDate} onChange={e => setEditDate(e.target.value)} />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleUpdateListInfo} className="flex-1 bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-50">Salvar</button>
-                <button onClick={() => setIsEditingList(false)} className="flex-1 bg-gray-100 text-gray-400 py-4 rounded-xl font-black uppercase text-[10px] tracking-widest">Cancelar</button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="w-full md:w-auto">
-                <h1 className="text-2xl md:text-3xl font-black text-gray-900 uppercase tracking-tighter leading-none break-words">{list.name}</h1>
-                <p className="text-blue-600 font-bold mt-2 text-[10px] uppercase tracking-widest font-mono flex items-center gap-2">
-                  <span className="bg-blue-50 px-2 py-1 rounded">📅 {new Date(list.createdAt).toLocaleDateString("pt-BR")}</span>
-                </p>
-              </div>
-              <button 
-                onClick={() => setIsEditingList(true)} 
-                className="w-full md:w-auto bg-gray-50 text-gray-400 border-2 border-gray-100 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                Editar Lista
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-8 sticky top-4 z-10">
-          <button 
-            onClick={() => { setEditingProductId(null); setProductName(""); setProductQty(1); setIsProductModalOpen(true); }}
-            className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-            Adicionar Produto
+    <div className="min-h-screen bg-gray-50 p-4 md:p-12 selection:bg-blue-100 pb-32">
+      <header className="max-w-3xl mx-auto mb-6">
+        <div className="mb-6">
+          <button onClick={() => router.push("/app")} className="flex items-center text-gray-400 font-bold uppercase text-xs tracking-widest hover:text-blue-600 transition-colors group">
+            <svg className="w-4 h-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            Voltar
           </button>
         </div>
+        
+        <div 
+          onClick={() => {
+            setEditListName(list.name);
+            setEditListDate(new Date(list.createdAt).toISOString().split("T")[0]);
+            setIsEditListModalOpen(true);
+          }}
+          className="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative select-none cursor-pointer hover:shadow-md hover:border-blue-200 active:scale-[0.99] transition-all group"
+          title="Clique para editar informações da lista"
+        >
+          <div className="absolute top-6 right-6 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          </div>
 
-        <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] ml-2 mb-2">Itens na Lista</h3>
-          {list.items.length === 0 ? (
-            <div 
-              onClick={() => { setEditingProductId(null); setProductName(""); setProductQty(1); setIsProductModalOpen(true); }}
-              className="text-center py-20 bg-white border-2 border-dashed border-gray-200 rounded-[2.5rem] cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all group"
-            >
-              <p className="text-gray-400 group-hover:text-blue-600 font-black uppercase tracking-widest text-[10px] transition-colors">A lista está vazia. Clique para adicionar.</p>
+          <div className="flex flex-col gap-2">
+             <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase leading-tight line-clamp-2 pr-8">{list.name}</h1>
+             
+             <div className="flex items-center gap-2 text-gray-400 mb-2">
+               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+               <span className="text-xs font-bold uppercase tracking-widest">{new Date(list.createdAt).toLocaleDateString("pt-BR")}</span>
+             </div>
+
+             <div className="w-full bg-gray-100 h-4 rounded-full overflow-hidden mt-2">
+                <div className="h-full bg-blue-600 transition-all duration-500 ease-out shadow-[0_0_10px_rgba(37,99,235,0.3)]" style={{ width: `${progress}%` }} />
+             </div>
+
+             <div className="flex justify-between items-end mt-1">
+                <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.1em]">{completedItems} de {totalItems} Itens</p>
+                <div className="font-black text-blue-600 text-2xl">{Math.round(progress)}%</div>
+             </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-3xl mx-auto mb-8">
+        <button 
+          onClick={() => handleOpenProductModal()}
+          className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 active:scale-[0.98] transition-all hover:-translate-y-1 flex items-center justify-center gap-3"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+          Adicionar Novo Item
+        </button>
+      </div>
+
+      <main className="max-w-3xl mx-auto space-y-4">
+        {list.items.length === 0 ? (
+          <div className="text-center py-10 opacity-50 select-none">
+            <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-400">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
             </div>
-          ) : (
-            list.items.map(product => (
-              <div key={product.id} className={`flex items-center justify-between p-5 border rounded-3xl shadow-sm transition-all ${product.completed ? 'bg-gray-50 border-gray-50 opacity-70' : 'bg-white border-gray-100 hover:border-blue-200'}`}>
-                <div className="flex items-center gap-4 md:gap-5">
-                  <button 
-                    onClick={() => toggleProductCompletion(product.id)}
-                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border-2 transition-all shrink-0 ${product.completed ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'bg-white border-gray-200 text-transparent hover:border-blue-400'}`}
-                  >
-                    <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                  </button>
-                  <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex flex-col items-center justify-center shadow-inner shrink-0 ${product.completed ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white shadow-lg'}`}>
-                    <span className="text-[8px] md:text-[9px] font-black uppercase leading-none opacity-60">Qtd</span>
-                    <span className="font-black text-lg md:text-xl leading-none mt-1">{product.quantity}</span>
-                  </div>
-                  <span className={`font-bold text-base md:text-lg uppercase tracking-tighter leading-tight break-all ${product.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{product.name}</span>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button onClick={() => { setEditingProductId(product.id); setProductName(product.name); setProductQty(product.quantity); setIsProductModalOpen(true); }} className="p-3 md:p-4 text-gray-300 hover:text-blue-600 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                  <button onClick={() => removeProduct(product.id)} className="p-3 md:p-4 text-gray-300 hover:text-red-500 transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+            <p className="text-gray-500 font-medium">Sua lista está vazia.</p>
+          </div>
+        ) : (
+          list.items.map((item) => (
+            <div 
+              key={item.id} 
+              onClick={() => handleOpenProductModal(item)}
+              className={`group flex items-center justify-between p-5 bg-white rounded-3xl border border-gray-100 shadow-sm transition-all cursor-pointer hover:border-blue-200 hover:shadow-md active:scale-[0.98] select-none ${item.completed ? 'opacity-60 bg-gray-50' : ''}`}
+            >
+              <div className="flex items-center gap-5 flex-1 overflow-hidden">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleProductCompletion(item); }}
+                  className={`flex-shrink-0 w-12 h-12 rounded-2xl border-2 flex items-center justify-center transition-all ${item.completed ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-200' : 'bg-white border-gray-100 text-transparent hover:border-blue-300'}`}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                </button>
+                
+                <div className="flex flex-col truncate pr-4">
+                  <span className={`text-lg font-black uppercase tracking-tight truncate ${item.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                    {item.name}
+                  </span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Quantidade: {item.quantity}</span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </div>
+
+              <div className="flex items-center gap-2 pl-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setProductToDelete(item); }}
+                  className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </main>
 
       {isProductModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 md:pt-0 md:items-center p-4">
           <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setIsProductModalOpen(false)} />
           <div className="relative bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[3rem] shadow-2xl p-8 animate-in slide-in-from-top-10 duration-300 mt-10 md:mt-0">
-            <h2 className="text-center font-black uppercase text-blue-600 mb-8 tracking-[0.2em]">{editingProductId ? "Editar" : "Novo"} Item</h2>
+            <h2 className="text-center font-black uppercase text-blue-600 mb-8 tracking-[0.2em] select-none">{editingProductId ? "Editar" : "Novo"} Item</h2>
             <div className="space-y-6">
               <input 
                 className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 font-bold outline-none focus:border-blue-500 text-gray-800 text-lg placeholder:text-gray-400" 
@@ -188,7 +225,7 @@ export default function ListDetails({ params }: { params: Promise<{ id: string }
                 autoFocus 
               />
               
-              <div className="flex items-center bg-gray-50 rounded-2xl p-2 border-2 border-gray-100">
+              <div className="flex items-center bg-gray-50 rounded-2xl p-2 border-2 border-gray-100 select-none">
                 <button 
                   onClick={() => setProductQty(Math.max(1, productQty - 1))} 
                   className="w-14 h-14 flex items-center justify-center bg-white rounded-xl shadow-sm font-black text-blue-600 text-2xl active:scale-90 transition-transform hover:bg-blue-50"
@@ -205,15 +242,69 @@ export default function ListDetails({ params }: { params: Promise<{ id: string }
               </div>
 
               <div className="flex gap-3 pt-2">
-                 <button onClick={() => setIsProductModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors">Cancelar</button>
-                 <button onClick={handleSaveProduct} className="flex-[2] bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700">Confirmar</button>
+                 <button onClick={() => setIsProductModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors select-none">Cancelar</button>
+                 <button onClick={handleSaveProduct} className="flex-[2] bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700 select-none">Confirmar</button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
 
-    
+      {isEditListModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 md:pt-0 md:items-center p-4">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setIsEditListModalOpen(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[3rem] shadow-2xl p-8 animate-in slide-in-from-top-10 duration-300 mt-10 md:mt-0">
+            <h2 className="text-center font-black uppercase text-blue-600 mb-8 tracking-[0.2em] select-none">Configurações</h2>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-4">Nome da Lista</label>
+                <input 
+                  className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 font-bold outline-none focus:border-blue-500 text-gray-800" 
+                  value={editListName} 
+                  onChange={e => setEditListName(e.target.value)} 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 pl-4">Data</label>
+                <div className="relative">
+                  <input 
+                    type="date" 
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-5 outline-none font-bold text-gray-800 focus:border-blue-500 focus:bg-white transition-all appearance-none uppercase" 
+                    value={editListDate} 
+                    onChange={e => setEditListDate(e.target.value)} 
+                  />
+                  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                 <button onClick={() => setIsEditListModalOpen(false)} className="flex-1 py-5 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors select-none">Cancelar</button>
+                 <button onClick={handleUpdateListInfo} className="flex-[2] bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 active:scale-95 transition-all hover:bg-blue-700 select-none">Salvar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {productToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-red-900/20 backdrop-blur-sm" onClick={() => setProductToDelete(null)} />
+          <div className="relative bg-white w-full max-w-sm rounded-[3rem] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-200 select-none">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2 uppercase">Remover Item?</h3>
+            <p className="text-gray-500 font-bold mb-6">{productToDelete.name}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setProductToDelete(null)} className="flex-1 py-4 font-black text-xs uppercase text-gray-400 bg-gray-100 rounded-2xl hover:bg-gray-200 transition-colors">Não</button>
+              <button onClick={confirmDeleteProduct} className="flex-1 py-4 font-black text-xs uppercase text-white bg-red-500 rounded-2xl hover:bg-red-600 shadow-lg shadow-red-200 transition-colors active:scale-95">Sim</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
